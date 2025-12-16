@@ -3,3 +3,5 @@ groq
 firebase-admin
 Pillow
 pytz
+
+echo eco pack
