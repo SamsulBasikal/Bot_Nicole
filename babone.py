@@ -1,4 +1,5 @@
 import streamlit as st
+import os
 from groq import Groq
 import firebase_admin
 from firebase_admin import credentials, firestore
@@ -19,10 +20,16 @@ bot_icon = Image.open("avatar.png")
 #setup firebase
 if not firebase_admin._apps:
     try:
-        snapshot = st.secrets["firebase"]["text_json"]
-        key_dict = json.loads(snapshot)
-        cred = credentials.Certificate(key_dict)
-        firebase_admin.initialize_app(cred)
+        snapshot = os.getenv("FIREBASE_CREDENTIALS")
+        
+        if snapshot:
+            key_dict = json.loads(snapshot)
+            cred = credentials.Certificate(key_dict)
+            firebase_admin.initialize_app(cred)
+        else:
+            st.error("Variable FIREBASE_CREDENTIALS belum disetting di Railway!")
+            st.stop()
+            
     except Exception as e:
         st.error(f"Gagal Login Firebase: {e}")
         st.stop()
@@ -30,7 +37,7 @@ if not firebase_admin._apps:
 db = firestore.client()
 
 #setup groq
-api_key_groq = st.secrets["GROQ_API_KEY"]
+api_key_groq = os.getenv("GROQ_API_KEY")
 client = Groq(api_key=api_key_groq)
 
 #2.hard data code
