@@ -40,7 +40,7 @@ db = firestore.client()
 api_key_groq = os.getenv("GROQ_API_KEY")
 client = Groq(api_key=api_key_groq)
 
-#2.hard data code
+#hard data code
 def get_info_akademik():
     """
     Untuk umum/hardcode(don't use database)menyimpan informasi umum.
@@ -61,26 +61,38 @@ def get_info_akademik():
     return info
 
 
-#3.database firebase
+#database firebase
 def cari_mahasiswa(nama_panggilan):
-    """doc doc mahasigma"""
-    doc_ref = db.collection('mahasiswa').document(nama_panggilan)
+    """ Mencari mahasiswa """
+    nama_clean = nama_panggilan.lower().strip()
+    doc_ref = db.collection('mahasiswa').document(nama_clean)
     doc = doc_ref.get()
+    
     if doc.exists:
         data = doc.to_dict()
-        return f"Nama: {data.get('nama')}, Kelas: {data.get('kelas')}"
+        nama_lengkap = data.get('nama')
+        kelas = data.get('kelas')
+        hobi = data.get('hobi', '-') 
+        return f"Nama: {nama_lengkap}, Kelas: {kelas}, Hobi: {hobi}"
     return None
 
 def cari_jadwal(hari):
-    """jadwal mata kuliah"""
-    doc_ref = db.collection('jadwal').document(hari)
+    """ jadwal matakul """
+    hari_bersih = hari.lower().strip()
+    
+    doc_ref = db.collection('jadwal').document(hari_bersih)
     doc = doc_ref.get()
+    
     if doc.exists:
         data = doc.to_dict()
-        return f"Jadwal {hari.capitalize()}: {data.get('matkul')}"
-    return None
+        matkul = data.get('matkul')
+        if matkul:
+            return f"Jadwal {hari.capitalize()}: {matkul}"
+        else:
+            return f"Jadwal {hari.capitalize()} kosong/libur."
+    return f"Tidak ada jadwal untuk hari {hari.capitalize()}."
 
-#4.LLM PROCESSING
+#llm code
 def tanya_ai(prompt_user, context_data):
     zona_wib = pytz.timezone('Asia/Jakarta')
     now = datetime.now(zona_wib)
@@ -133,7 +145,7 @@ def tanya_ai(prompt_user, context_data):
     except Exception as e:
         return f"Maaf,sedang error: {e}"
 
-# 5. TAMPILAN
+#the css
 st.markdown("""
 <style>
     .block-container {
@@ -196,21 +208,25 @@ if prompt:
     pesan_lower = prompt.lower()
     context_data = ""
 
-    # Logika Cek jadwal firebase
+    #Logika Cek jadwal 
     if "jadwal" in pesan_lower:
-        hari_list = ["senin", "selasa", "rabu", "kamis", "jumat", "sabtu"]
+        hari_list = ["senin", "selasa", "rabu", "kamis", "jumat", "sabtu", "minggu"]
         found_hari = next((h for h in hari_list if h in pesan_lower), None)
-        context_data = f"Info Jadwal: {cari_jadwal(found_hari)}" if found_hari else "Sebutkan harinya."
+        
+        if found_hari:
+            context_data = cari_jadwal(found_hari)
+        else:
+            context_data = "Sebutkan harinya (Contoh: Jadwal Senin)."
         
     elif "info" in pesan_lower:
-        # Logika Cek nama firebase info [nama]
+        #Logika Cek nama info [nama]
         nama = pesan_lower.replace("info", "").strip()
         context_data = f"Info Mahasiswa: {cari_mahasiswa(nama)}"
 
-    # 3. Kirim ke AI
+    #Kirim 
     jawaban = tanya_ai(prompt, context_data)
     
-    # Tampilkan Jawaban Bot
+    #Tampilkan Jawaban
     with st.chat_message("assistant", avatar=bot_icon):
         st.write("**Nicole**")
         st.markdown(jawaban)
